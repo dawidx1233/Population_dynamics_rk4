@@ -1,0 +1,14 @@
+{
+  "model": "logistic",
+  "parameters": {
+    "r": "0.5",
+    "K": "100"
+  },
+  "initial_conditions": {
+    "x0": "1"
+  },
+  "simulation": {
+    "time": "50",
+    "step": "0.01"
+  }
+}
