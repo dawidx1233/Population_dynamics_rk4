@@ -1,26 +1,14 @@
-"""
-Ulepszona animowana aplikacja do badania dynamiki populacji
-Z wyświetlaniem równań matematycznych i eksportem wykresów
-
-Autor: Manus AI
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.animation import FuncAnimation
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from typing import Dict, List, Tuple, Callable
 import json
-import threading
-import time
-import os
 from datetime import datetime
 
 
 class PopulationModels:
-    """Klasa zawierająca modele populacyjne z równaniami matematycznymi"""
 
     def __init__(self):
         self.models = {
@@ -33,7 +21,8 @@ class PopulationModels:
                 "equilibrium": "x* = K (stabilny punkt równowagi)",
                 "parameters": ["r", "K"],
                 "param_names": ["Tempo wzrostu (r)", "Pojemność środowiska (K)"],
-                "param_descriptions": ["Wewnętrzne tempo wzrostu populacji [1/czas]", "Maksymalna populacja jaką może utrzymać środowisko"],
+                "param_descriptions": ["Wewnętrzne tempo wzrostu populacji [1/czas]",
+                                       "Maksymalna populacja jaką może utrzymać środowisko"],
                 "param_defaults": [0.5, 100],
                 "param_ranges": [(0.1, 2.0), (10, 1000)],
                 "initial_conditions": ["x0"],
@@ -56,7 +45,7 @@ class PopulationModels:
                 "equilibrium": "Punkt równowagi: (d/c, a/b)",
                 "parameters": ["a", "b", "c", "d"],
                 "param_names": ["Tempo wzrostu ofiar (a)", "Skuteczność polowania (b)",
-                              "Efektywność konwersji (c)", "Śmiertelność drapieżników (d)"],
+                                "Efektywność konwersji (c)", "Śmiertelność drapieżników (d)"],
                 "param_descriptions": [
                     "Tempo wzrostu ofiar bez drapieżników [1/czas]",
                     "Skuteczność polowania drapieżników [1/(populacja·czas)]",
@@ -85,8 +74,8 @@ class PopulationModels:
                 "equilibrium": "Koegzystencja możliwa gdy αβ < 1",
                 "parameters": ["r1", "r2", "K1", "K2", "alpha", "beta"],
                 "param_names": ["Tempo wzrostu gat. 1 (r₁)", "Tempo wzrostu gat. 2 (r₂)",
-                              "Pojemność dla gat. 1 (K₁)", "Pojemność dla gat. 2 (K₂)",
-                              "Wpływ gat. 2 na gat. 1 (α)", "Wpływ gat. 1 na gat. 2 (β)"],
+                                "Pojemność dla gat. 1 (K₁)", "Pojemność dla gat. 2 (K₂)",
+                                "Wpływ gat. 2 na gat. 1 (α)", "Wpływ gat. 1 na gat. 2 (β)"],
                 "param_descriptions": [
                     "Tempo wzrostu gatunku 1 [1/czas]",
                     "Tempo wzrostu gatunku 2 [1/czas]",
@@ -145,7 +134,7 @@ class PopulationModels:
                 "equilibrium": "Równowaga zależy od tempa migracji m",
                 "parameters": ["r1", "r2", "K1", "K2", "m"],
                 "param_names": ["Tempo wzrostu pop. 1 (r₁)", "Tempo wzrostu pop. 2 (r₂)",
-                              "Pojemność pop. 1 (K₁)", "Pojemność pop. 2 (K₂)", "Tempo migracji (m)"],
+                                "Pojemność pop. 1 (K₁)", "Pojemność pop. 2 (K₂)", "Tempo migracji (m)"],
                 "param_descriptions": [
                     "Tempo wzrostu subpopulacji 1 [1/czas]",
                     "Tempo wzrostu subpopulacji 2 [1/czas]",
@@ -167,10 +156,8 @@ class PopulationModels:
 
 
 class RK4Solver:
-    """Solver RK4 dla równań różniczkowych z obsługą animacji"""
 
     def solve_single_ode_animated(self, f: Callable, t0: float, x0: float, h: float, n_steps: int):
-        """Generator rozwiązujący pojedyncze równanie różniczkowe krok po kroku"""
         t_curr = t0
         x_curr = x0
 
@@ -178,18 +165,17 @@ class RK4Solver:
 
         for i in range(n_steps):
             k1 = h * f(t_curr, x_curr)
-            k2 = h * f(t_curr + h/2, x_curr + k1/2)
-            k3 = h * f(t_curr + h/2, x_curr + k2/2)
+            k2 = h * f(t_curr + h / 2, x_curr + k1 / 2)
+            k3 = h * f(t_curr + h / 2, x_curr + k2 / 2)
             k4 = h * f(t_curr + h, x_curr + k3)
 
-            x_curr = x_curr + (k1 + 2*k2 + 2*k3 + k4) / 6
+            x_curr = x_curr + (k1 + 2 * k2 + 2 * k3 + k4) / 6
             t_curr = t_curr + h
 
             yield t_curr, x_curr
 
     def solve_system_ode_animated(self, functions: List[Callable], t0: float,
-                                initial_conditions: List[float], h: float, n_steps: int):
-        """Generator rozwiązujący układ równań różniczkowych krok po kroku"""
+                                  initial_conditions: List[float], h: float, n_steps: int):
         n_vars = len(initial_conditions)
         t_curr = t0
         curr_vals = initial_conditions.copy()
@@ -197,24 +183,19 @@ class RK4Solver:
         yield t_curr, curr_vals.copy()
 
         for step in range(n_steps):
-            # Oblicz k1
             k1 = [h * f(t_curr, *curr_vals) for f in functions]
 
-            # Oblicz k2
-            k2_vals = [curr_vals[i] + k1[i]/2 for i in range(n_vars)]
-            k2 = [h * f(t_curr + h/2, *k2_vals) for f in functions]
+            k2_vals = [curr_vals[i] + k1[i] / 2 for i in range(n_vars)]
+            k2 = [h * f(t_curr + h / 2, *k2_vals) for f in functions]
 
-            # Oblicz k3
-            k3_vals = [curr_vals[i] + k2[i]/2 for i in range(n_vars)]
-            k3 = [h * f(t_curr + h/2, *k3_vals) for f in functions]
+            k3_vals = [curr_vals[i] + k2[i] / 2 for i in range(n_vars)]
+            k3 = [h * f(t_curr + h / 2, *k3_vals) for f in functions]
 
-            # Oblicz k4
             k4_vals = [curr_vals[i] + k3[i] for i in range(n_vars)]
             k4 = [h * f(t_curr + h, *k4_vals) for f in functions]
 
-            # Aktualizuj wartości
             for i in range(n_vars):
-                curr_vals[i] = curr_vals[i] + (k1[i] + 2*k2[i] + 2*k3[i] + k4[i]) / 6
+                curr_vals[i] = curr_vals[i] + (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) / 6
 
             t_curr = t_curr + h
 
@@ -222,7 +203,6 @@ class RK4Solver:
 
 
 class MathDisplayWindow:
-    """Okno wyświetlające równania matematyczne i informacje o modelu"""
 
     def __init__(self, parent, model_info, parameters):
         self.window = tk.Toplevel(parent)
@@ -236,13 +216,10 @@ class MathDisplayWindow:
         self.setup_display()
 
     def setup_display(self):
-        """Konfiguruje wyświetlanie równań i informacji"""
 
-        # Główny kontener z przewijaniem
         main_frame = ttk.Frame(self.window)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # Canvas z scrollbarem
         canvas = tk.Canvas(main_frame)
         scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
@@ -257,7 +234,7 @@ class MathDisplayWindow:
 
         # Tytuł modelu
         title_label = ttk.Label(scrollable_frame, text=self.model_info['name'],
-                               font=('Arial', 16, 'bold'))
+                                font=('Arial', 16, 'bold'))
         title_label.pack(anchor=tk.W, pady=(0, 10))
 
         # Opis modelu
@@ -265,7 +242,7 @@ class MathDisplayWindow:
         desc_frame.pack(fill=tk.X, pady=(0, 10))
 
         desc_label = ttk.Label(desc_frame, text=self.model_info['description'],
-                              wraplength=750, justify=tk.LEFT)
+                               wraplength=750, justify=tk.LEFT)
         desc_label.pack(anchor=tk.W)
 
         # Równania matematyczne
@@ -273,8 +250,8 @@ class MathDisplayWindow:
         eq_frame.pack(fill=tk.X, pady=(0, 10))
 
         for i, eq in enumerate(self.model_info['math_equations']):
-            eq_label = ttk.Label(eq_frame, text=f"Równanie {i+1}: {eq}",
-                                font=('Courier', 12), foreground='blue')
+            eq_label = ttk.Label(eq_frame, text=f"Równanie {i + 1}: {eq}",
+                                 font=('Courier', 12), foreground='blue')
             eq_label.pack(anchor=tk.W, pady=2)
 
         # Opis matematyczny
@@ -282,7 +259,7 @@ class MathDisplayWindow:
         math_desc_frame.pack(fill=tk.X, pady=(0, 10))
 
         math_desc_label = ttk.Label(math_desc_frame, text=self.model_info['math_description'],
-                                   wraplength=750, justify=tk.LEFT)
+                                    wraplength=750, justify=tk.LEFT)
         math_desc_label.pack(anchor=tk.W)
 
         # Parametry z wartościami
@@ -290,14 +267,14 @@ class MathDisplayWindow:
         param_frame.pack(fill=tk.X, pady=(0, 10))
 
         for i, (param, name, desc) in enumerate(zip(
-            self.model_info['parameters'],
-            self.model_info['param_names'],
-            self.model_info['param_descriptions']
+                self.model_info['parameters'],
+                self.model_info['param_names'],
+                self.model_info['param_descriptions']
         )):
             value = self.parameters.get(param, 'N/A')
             param_text = f"{param} = {value} - {name}\n   {desc}"
             param_label = ttk.Label(param_frame, text=param_text,
-                                   font=('Arial', 10), foreground='darkgreen')
+                                    font=('Arial', 10), foreground='darkgreen')
             param_label.pack(anchor=tk.W, pady=2)
 
         # Właściwości matematyczne
@@ -306,28 +283,30 @@ class MathDisplayWindow:
 
         # Punkt równowagi
         eq_label = ttk.Label(props_frame, text=f"Równowaga: {self.model_info['equilibrium']}",
-                            font=('Courier', 11), foreground='red')
+                             font=('Courier', 11), foreground='red')
         eq_label.pack(anchor=tk.W, pady=2)
 
         # Dodatkowe właściwości specyficzne dla modelu
         if 'analytical_solution' in self.model_info:
-            anal_label = ttk.Label(props_frame, text=f"Rozwiązanie analityczne: {self.model_info['analytical_solution']}",
-                                  font=('Courier', 10), foreground='purple')
+            anal_label = ttk.Label(props_frame,
+                                   text=f"Rozwiązanie analityczne: {self.model_info['analytical_solution']}",
+                                   font=('Courier', 10), foreground='purple')
             anal_label.pack(anchor=tk.W, pady=2)
 
         if 'conserved_quantity' in self.model_info:
             cons_label = ttk.Label(props_frame, text=f"Wielkość zachowana: {self.model_info['conserved_quantity']}",
-                                  font=('Courier', 10), foreground='purple')
+                                   font=('Courier', 10), foreground='purple')
             cons_label.pack(anchor=tk.W, pady=2)
 
         if 'basic_reproduction' in self.model_info:
             r0_label = ttk.Label(props_frame, text=f"Liczba reprodukcji: {self.model_info['basic_reproduction']}",
-                                font=('Courier', 10), foreground='purple')
+                                 font=('Courier', 10), foreground='purple')
             r0_label.pack(anchor=tk.W, pady=2)
 
         if 'coexistence_condition' in self.model_info:
-            coex_label = ttk.Label(props_frame, text=f"Warunek koegzystencji: {self.model_info['coexistence_condition']}",
-                                  font=('Courier', 10), foreground='purple')
+            coex_label = ttk.Label(props_frame,
+                                   text=f"Warunek koegzystencji: {self.model_info['coexistence_condition']}",
+                                   font=('Courier', 10), foreground='purple')
             coex_label.pack(anchor=tk.W, pady=2)
 
         # Obliczenia numeryczne
@@ -341,12 +320,12 @@ class MathDisplayWindow:
 • Aktualizacja: y_{n+1} = y_n + (k₁ + 2k₂ + 2k₃ + k₄)/6"""
 
         rk4_label = ttk.Label(numerical_frame, text=rk4_text,
-                             font=('Courier', 9), justify=tk.LEFT)
+                              font=('Courier', 9), justify=tk.LEFT)
         rk4_label.pack(anchor=tk.W)
 
         # Przycisk zamknięcia
         close_button = ttk.Button(scrollable_frame, text="Zamknij",
-                                 command=self.window.destroy)
+                                  command=self.window.destroy)
         close_button.pack(pady=10)
 
         # Pakowanie canvas i scrollbar
@@ -355,7 +334,8 @@ class MathDisplayWindow:
 
         # Bind scroll wheel
         def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
 
@@ -391,7 +371,6 @@ class AnimatedPopulationGUI:
         self.setup_gui()
 
     def setup_gui(self):
-        """Konfiguruje interfejs użytkownika"""
 
         # Główny kontener
         main_frame = ttk.Frame(self.root)
@@ -413,7 +392,6 @@ class AnimatedPopulationGUI:
         self.setup_plots_panel(right_frame)
 
     def setup_parameters_panel(self, parent):
-        """Konfiguruje panel parametrów"""
 
         # Wybór modelu
         ttk.Label(parent, text="Model populacyjny:", font=('Arial', 14, 'bold')).pack(anchor=tk.W, pady=(0, 5))
@@ -423,8 +401,8 @@ class AnimatedPopulationGUI:
         model_frame.pack(fill=tk.X, pady=(0, 10))
 
         self.model_combo = ttk.Combobox(model_frame, textvariable=self.model_var,
-                                       values=list(self.models.models.keys()),
-                                       state="readonly", width=35)
+                                        values=list(self.models.models.keys()),
+                                        state="readonly", width=35)
         self.model_combo.pack(side=tk.LEFT)
         self.model_combo.bind('<<ComboboxSelected>>', self.on_model_change)
 
@@ -454,11 +432,9 @@ class AnimatedPopulationGUI:
         self.step_entry.grid(row=1, column=1, sticky=tk.W, padx=(5, 0), pady=2)
         self.step_entry.insert(0, "0.05")
 
-        # Inicjalizuj interfejs
         self.update_model_interface()
 
     def setup_animation_controls(self, parent):
-        """Konfiguruje kontrolki animacji"""
 
         # Panel kontroli animacji
         anim_frame = ttk.LabelFrame(parent, text="Kontrola animacji", padding=10)
@@ -469,15 +445,15 @@ class AnimatedPopulationGUI:
         button_frame.pack(fill=tk.X, pady=(0, 10))
 
         self.play_button = ttk.Button(button_frame, text="▶ Start",
-                                     command=self.start_animation, width=12)
+                                      command=self.start_animation, width=12)
         self.play_button.pack(side=tk.LEFT, padx=(0, 5))
 
         self.pause_button = ttk.Button(button_frame, text="⏸ Pauza",
-                                      command=self.pause_animation, width=12)
+                                       command=self.pause_animation, width=12)
         self.pause_button.pack(side=tk.LEFT, padx=(0, 5))
 
         self.stop_button = ttk.Button(button_frame, text="⏹ Stop",
-                                     command=self.stop_animation, width=12)
+                                      command=self.stop_animation, width=12)
         self.stop_button.pack(side=tk.LEFT)
 
         # Kontrola prędkości
@@ -488,7 +464,7 @@ class AnimatedPopulationGUI:
 
         self.speed_var = tk.DoubleVar(value=1.0)
         self.speed_scale = ttk.Scale(speed_frame, from_=0.1, to=5.0,
-                                    variable=self.speed_var, orient=tk.HORIZONTAL)
+                                     variable=self.speed_var, orient=tk.HORIZONTAL)
         self.speed_scale.pack(fill=tk.X, pady=(5, 0))
         self.speed_scale.bind('<Motion>', self.on_speed_change)
 
@@ -503,55 +479,52 @@ class AnimatedPopulationGUI:
         ttk.Label(progress_frame, text="Postęp:").pack(anchor=tk.W)
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_var,
-                                          maximum=100)
+                                            maximum=100)
         self.progress_bar.pack(fill=tk.X, pady=(5, 0))
 
         # Status animacji
         self.status_label = ttk.Label(anim_frame, text="Gotowy do animacji",
-                                     font=('Arial', 9))
+                                      font=('Arial', 9))
         self.status_label.pack(anchor=tk.W, pady=(10, 0))
 
     def setup_math_controls(self, parent):
-        """Konfiguruje kontrolki matematyczne"""
 
         math_frame = ttk.LabelFrame(parent, text="Matematyka i analiza", padding=10)
         math_frame.pack(fill=tk.X, pady=(10, 10))
 
         ttk.Button(math_frame, text="📐 Pokaż równania",
-                  command=self.show_math_window).pack(fill=tk.X, pady=2)
+                   command=self.show_math_window).pack(fill=tk.X, pady=2)
 
         ttk.Button(math_frame, text="📊 Analiza stabilności",
-                  command=self.analyze_stability).pack(fill=tk.X, pady=2)
+                   command=self.analyze_stability).pack(fill=tk.X, pady=2)
 
         ttk.Button(math_frame, text="🔢 Oblicz właściwości",
-                  command=self.calculate_properties).pack(fill=tk.X, pady=2)
+                   command=self.calculate_properties).pack(fill=tk.X, pady=2)
 
     def setup_export_controls(self, parent):
-        """Konfiguruje kontrolki eksportu"""
 
         export_frame = ttk.LabelFrame(parent, text="Eksport i zapis", padding=10)
         export_frame.pack(fill=tk.X, pady=(10, 0))
 
         ttk.Button(export_frame, text="💾 Eksportuj wykres czasowy",
-                  command=lambda: self.export_plot('time')).pack(fill=tk.X, pady=2)
+                   command=lambda: self.export_plot('time')).pack(fill=tk.X, pady=2)
 
         ttk.Button(export_frame, text="💾 Eksportuj płaszczyznę fazową",
-                  command=lambda: self.export_plot('phase')).pack(fill=tk.X, pady=2)
+                   command=lambda: self.export_plot('phase')).pack(fill=tk.X, pady=2)
 
         ttk.Button(export_frame, text="💾 Eksportuj oba wykresy",
-                  command=lambda: self.export_plot('both')).pack(fill=tk.X, pady=2)
+                   command=lambda: self.export_plot('both')).pack(fill=tk.X, pady=2)
 
         ttk.Button(export_frame, text="📄 Zapisz dane CSV",
-                  command=self.export_data_csv).pack(fill=tk.X, pady=2)
+                   command=self.export_data_csv).pack(fill=tk.X, pady=2)
 
         ttk.Button(export_frame, text="⚙️ Zapisz parametry",
-                  command=self.save_parameters).pack(fill=tk.X, pady=2)
+                   command=self.save_parameters).pack(fill=tk.X, pady=2)
 
         ttk.Button(export_frame, text="📂 Wczytaj parametry",
-                  command=self.load_parameters).pack(fill=tk.X, pady=2)
+                   command=self.load_parameters).pack(fill=tk.X, pady=2)
 
     def setup_plots_panel(self, parent):
-        """Konfiguruje panel wykresów"""
 
         # Notebook dla zakładek
         self.notebook = ttk.Notebook(parent)
@@ -570,7 +543,6 @@ class AnimatedPopulationGUI:
         self.setup_phase_plot()
 
     def setup_time_plot(self):
-        """Konfiguruje animowany wykres czasowy"""
         self.time_fig, self.time_ax = plt.subplots(figsize=(12, 8))
         self.time_ax.set_xlabel('Czas', fontsize=12)
         self.time_ax.set_ylabel('Wielkość populacji', fontsize=12)
@@ -585,7 +557,6 @@ class AnimatedPopulationGUI:
         self.time_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
     def setup_phase_plot(self):
-        """Konfiguruje animowaną płaszczyznę fazową"""
         self.phase_fig, self.phase_ax = plt.subplots(figsize=(12, 8))
         self.phase_ax.set_xlabel('Populacja 1', fontsize=12)
         self.phase_ax.set_ylabel('Populacja 2', fontsize=12)
@@ -601,31 +572,26 @@ class AnimatedPopulationGUI:
         self.phase_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
     def on_model_change(self, event=None):
-        """Obsługuje zmianę modelu"""
         self.current_model = self.model_var.get()
         self.update_model_interface()
         self.stop_animation()
 
     def update_model_interface(self):
-        """Aktualizuje interfejs dla wybranego modelu"""
         model_info = self.models.models[self.current_model]
 
-        # Aktualizuj opis
         self.description_label.config(text=model_info["description"])
 
-        # Wyczyść poprzednie kontrolki
         for widget in self.params_frame.winfo_children():
             widget.destroy()
         for widget in self.ic_frame.winfo_children():
             widget.destroy()
 
-        # Stwórz kontrolki parametrów
         self.param_entries = {}
         for i, (param, name, default, range_val) in enumerate(zip(
-            model_info["parameters"],
-            model_info["param_names"],
-            model_info["param_defaults"],
-            model_info["param_ranges"]
+                model_info["parameters"],
+                model_info["param_names"],
+                model_info["param_defaults"],
+                model_info["param_ranges"]
         )):
             ttk.Label(self.params_frame, text=f"{name}:").grid(row=i, column=0, sticky=tk.W, pady=2)
             entry = ttk.Entry(self.params_frame, width=15)
@@ -633,16 +599,14 @@ class AnimatedPopulationGUI:
             entry.insert(0, str(default))
             self.param_entries[param] = entry
 
-            # Dodaj informację o zakresie
             ttk.Label(self.params_frame, text=f"({range_val[0]}-{range_val[1]})",
-                     font=('Arial', 8)).grid(row=i, column=2, sticky=tk.W, padx=(5, 0), pady=2)
+                      font=('Arial', 8)).grid(row=i, column=2, sticky=tk.W, padx=(5, 0), pady=2)
 
-        # Stwórz kontrolki warunków początkowych
         self.ic_entries = {}
         for i, (ic, name, default) in enumerate(zip(
-            model_info["initial_conditions"],
-            model_info["ic_names"],
-            model_info["ic_defaults"]
+                model_info["initial_conditions"],
+                model_info["ic_names"],
+                model_info["ic_defaults"]
         )):
             ttk.Label(self.ic_frame, text=f"{name}:").grid(row=i, column=0, sticky=tk.W, pady=2)
             entry = ttk.Entry(self.ic_frame, width=15)
@@ -651,33 +615,27 @@ class AnimatedPopulationGUI:
             self.ic_entries[ic] = entry
 
     def show_math_window(self):
-        """Pokazuje okno z równaniami matematycznymi"""
         try:
-            # Pobierz aktualne parametry
             model_info = self.models.models[self.current_model]
             parameters = {}
             for param in model_info["parameters"]:
                 parameters[param] = float(self.param_entries[param].get())
 
-            # Zamknij poprzednie okno jeśli istnieje
             if self.math_window:
                 self.math_window.window.destroy()
 
-            # Stwórz nowe okno matematyki
             self.math_window = MathDisplayWindow(self.root, model_info, parameters)
 
         except Exception as e:
             messagebox.showerror("Błąd", f"Nie udało się wyświetlić równań: {str(e)}")
 
     def analyze_stability(self):
-        """Analizuje stabilność modelu"""
         try:
             model_info = self.models.models[self.current_model]
             parameters = {}
             for param in model_info["parameters"]:
                 parameters[param] = float(self.param_entries[param].get())
 
-            # Analiza specyficzna dla modelu
             analysis_text = f"Analiza stabilności: {model_info['name']}\n\n"
 
             if self.current_model == "logistic":
@@ -685,26 +643,26 @@ class AnimatedPopulationGUI:
                 K = parameters['K']
                 analysis_text += f"Punkt równowagi: x* = {K}\n"
                 analysis_text += f"Stabilność: Stabilny dla r > 0 (r = {r})\n"
-                analysis_text += f"Czas podwojenia: t₂ ≈ {0.693/r:.2f}\n"
-                analysis_text += f"Czas do 95% K: t₉₅ ≈ {3/r:.2f}\n"
+                analysis_text += f"Czas podwojenia: t₂ ≈ {0.693 / r:.2f}\n"
+                analysis_text += f"Czas do 95% K: t₉₅ ≈ {3 / r:.2f}\n"
 
             elif self.current_model == "lotka_volterra":
                 a, b, c, d = parameters['a'], parameters['b'], parameters['c'], parameters['d']
-                x_eq = d/c
-                y_eq = a/b
+                x_eq = d / c
+                y_eq = a / b
                 analysis_text += f"Punkt równowagi: ({x_eq:.2f}, {y_eq:.2f})\n"
                 analysis_text += f"Typ: Neutralnie stabilny (centrum)\n"
-                analysis_text += f"Okres oscylacji: T ≈ {2*np.pi/np.sqrt(a*d):.2f}\n"
+                analysis_text += f"Okres oscylacji: T ≈ {2 * np.pi / np.sqrt(a * d):.2f}\n"
 
             elif self.current_model == "competition":
                 alpha, beta = parameters['alpha'], parameters['beta']
                 K1, K2 = parameters['K1'], parameters['K2']
                 analysis_text += f"Współczynniki konkurencji: α = {alpha}, β = {beta}\n"
-                analysis_text += f"Warunek koegzystencji: αβ = {alpha*beta:.3f}\n"
+                analysis_text += f"Warunek koegzystencji: αβ = {alpha * beta:.3f}\n"
                 if alpha * beta < 1:
                     analysis_text += "✓ Koegzystencja możliwa (αβ < 1)\n"
-                    x_coex = (K1 - alpha*K2)/(1 - alpha*beta)
-                    y_coex = (K2 - beta*K1)/(1 - alpha*beta)
+                    x_coex = (K1 - alpha * K2) / (1 - alpha * beta)
+                    y_coex = (K2 - beta * K1) / (1 - alpha * beta)
                     if x_coex > 0 and y_coex > 0:
                         analysis_text += f"Punkt koegzystencji: ({x_coex:.1f}, {y_coex:.1f})\n"
                 else:
@@ -712,11 +670,11 @@ class AnimatedPopulationGUI:
 
             elif self.current_model == "sir":
                 beta, gamma = parameters['beta'], parameters['gamma']
-                R0 = beta/gamma
+                R0 = beta / gamma
                 analysis_text += f"Podstawowa liczba reprodukcji: R₀ = {R0:.2f}\n"
                 if R0 > 1:
                     analysis_text += "✓ Epidemia się rozwinie (R₀ > 1)\n"
-                    analysis_text += f"Próg stadnej odporności: {(1-1/R0)*100:.1f}%\n"
+                    analysis_text += f"Próg stadnej odporności: {(1 - 1 / R0) * 100:.1f}%\n"
                 else:
                     analysis_text += "❌ Epidemia wygaśnie (R₀ ≤ 1)\n"
 
@@ -726,7 +684,6 @@ class AnimatedPopulationGUI:
             messagebox.showerror("Błąd", f"Nie udało się przeprowadzić analizy: {str(e)}")
 
     def calculate_properties(self):
-        """Oblicza właściwości matematyczne modelu"""
         try:
             if not self.time_data or not self.population_data:
                 messagebox.showwarning("Ostrzeżenie", "Najpierw uruchom symulację!")
@@ -734,7 +691,6 @@ class AnimatedPopulationGUI:
 
             model_info = self.models.models[self.current_model]
 
-            # Oblicz właściwości na podstawie danych symulacji
             properties_text = f"Właściwości numeryczne: {model_info['name']}\n\n"
 
             # Podstawowe statystyki
@@ -754,14 +710,12 @@ class AnimatedPopulationGUI:
                 properties_text += f"  Wartość końcowa: {final_val:.3f}\n"
                 properties_text += f"  Średnia: {mean_val:.3f}\n"
 
-                # Sprawdź oscylacje
                 if len(data) > 100:
                     diff = np.diff(data)
                     sign_changes = np.sum(np.diff(np.sign(diff)) != 0)
                     if sign_changes > 10:
-                        properties_text += f"  Oscylacje: {sign_changes//2} cykli\n"
+                        properties_text += f"  Oscylacje: {sign_changes // 2} cykli\n"
 
-            # Sprawdź zachowanie wielkości zachowanych (dla L-V)
             if self.current_model == "lotka_volterra" and len(self.population_data) == 2:
                 parameters = {}
                 for param in model_info["parameters"]:
@@ -769,11 +723,10 @@ class AnimatedPopulationGUI:
 
                 a, b, c, d = parameters['a'], parameters['b'], parameters['c'], parameters['d']
 
-                # Oblicz Hamiltonian
                 H_values = []
                 for x, y in zip(self.population_data[0], self.population_data[1]):
                     if x > 0 and y > 0:
-                        H = c*x + b*y - d*np.log(x) - a*np.log(y)
+                        H = c * x + b * y - d * np.log(x) - a * np.log(y)
                         H_values.append(H)
 
                 if H_values:
@@ -789,7 +742,6 @@ class AnimatedPopulationGUI:
             messagebox.showerror("Błąd", f"Nie udało się obliczyć właściwości: {str(e)}")
 
     def export_plot(self, plot_type):
-        """Eksportuje wykres do pliku"""
         try:
             if not self.time_data or not self.population_data:
                 messagebox.showwarning("Ostrzeżenie", "Najpierw uruchom symulację!")
@@ -818,13 +770,12 @@ class AnimatedPopulationGUI:
             model_info = self.models.models[self.current_model]
 
             if plot_type == 'time':
-                # Eksportuj tylko wykres czasowy
                 fig, ax = plt.subplots(figsize=(12, 8))
                 colors = ['blue', 'red', 'green', 'orange', 'purple']
 
                 for i, (data, name) in enumerate(zip(self.population_data, model_info['var_names'])):
                     ax.plot(self.time_data, data, color=colors[i % len(colors)],
-                           linewidth=2, label=name)
+                            linewidth=2, label=name)
 
                 ax.set_xlabel('Czas', fontsize=12)
                 ax.set_ylabel('Wielkość populacji', fontsize=12)
@@ -837,7 +788,6 @@ class AnimatedPopulationGUI:
                 plt.close(fig)
 
             elif plot_type == 'phase':
-                # Eksportuj tylko płaszczyznę fazową
                 if len(self.population_data) < 2:
                     messagebox.showwarning("Ostrzeżenie", "Płaszczyzna fazowa dostępna tylko dla modeli 2D!")
                     return
@@ -862,7 +812,6 @@ class AnimatedPopulationGUI:
                 plt.close(fig)
 
             else:  # both
-                # Eksportuj oba wykresy
                 if len(self.population_data) >= 2:
                     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
                 else:
@@ -873,7 +822,7 @@ class AnimatedPopulationGUI:
                 colors = ['blue', 'red', 'green', 'orange', 'purple']
                 for i, (data, name) in enumerate(zip(self.population_data, model_info['var_names'])):
                     ax1.plot(self.time_data, data, color=colors[i % len(colors)],
-                            linewidth=2, label=name)
+                             linewidth=2, label=name)
 
                 ax1.set_xlabel('Czas', fontsize=12)
                 ax1.set_ylabel('Wielkość populacji', fontsize=12)
@@ -881,7 +830,7 @@ class AnimatedPopulationGUI:
                 ax1.grid(True, alpha=0.3)
                 ax1.legend()
 
-                # Płaszczyzna fazowa (jeśli możliwa)
+                # Płaszczyzna fazowa
                 if ax2 and len(self.population_data) >= 2:
                     x_data = self.population_data[0]
                     y_data = self.population_data[1]
@@ -906,7 +855,6 @@ class AnimatedPopulationGUI:
             messagebox.showerror("Błąd", f"Nie udało się eksportować wykresu: {str(e)}")
 
     def export_data_csv(self):
-        """Eksportuje dane symulacji do pliku CSV"""
         try:
             if not self.time_data or not self.population_data:
                 messagebox.showwarning("Ostrzeżenie", "Najpierw uruchom symulację!")
@@ -927,7 +875,6 @@ class AnimatedPopulationGUI:
 
             model_info = self.models.models[self.current_model]
 
-            # Przygotuj dane do zapisu
             import csv
             with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
                 writer = csv.writer(csvfile)
@@ -954,12 +901,10 @@ class AnimatedPopulationGUI:
         functions = []
 
         for eq_str in model_info["equations"]:
-            # Zastąp parametry wartościami
             eq_eval = eq_str
             for param, value in parameters.items():
                 eq_eval = eq_eval.replace(param, str(value))
 
-            # Stwórz funkcję
             if model_info["type"] == "single":
                 func = lambda t, x, eq=eq_eval: eval(eq, {"t": t, "x": x, "np": np})
             else:
@@ -976,7 +921,9 @@ class AnimatedPopulationGUI:
                             for i, var in enumerate(var_names):
                                 local_vars[var] = args[i]
                             return eval(eq_str, local_vars)
+
                         return func
+
                     func = make_func(eq_eval)
 
             functions.append(func)
@@ -984,9 +931,7 @@ class AnimatedPopulationGUI:
         return functions
 
     def prepare_animation_data(self):
-        """Przygotowuje dane do animacji"""
         try:
-            # Pobierz parametry
             model_info = self.models.models[self.current_model]
 
             parameters = {}
@@ -1001,10 +946,8 @@ class AnimatedPopulationGUI:
             h = float(self.step_entry.get())
             self.max_steps = int(time_end / h)
 
-            # Stwórz funkcje modelu
             functions = self.create_model_functions(self.current_model, parameters)
 
-            # Przygotuj generator
             if model_info["type"] == "single":
                 self.solver_generator = self.solver.solve_single_ode_animated(
                     functions[0], 0, initial_conditions[0], h, self.max_steps)
@@ -1018,7 +961,6 @@ class AnimatedPopulationGUI:
             self.phase_data = []
             self.current_step = 0
 
-            # Przygotuj wykresy
             self.setup_animation_plots(model_info)
 
             return True
@@ -1028,31 +970,27 @@ class AnimatedPopulationGUI:
             return False
 
     def setup_animation_plots(self, model_info):
-        """Przygotowuje wykresy do animacji"""
 
-        # Wykres czasowy
         self.time_ax.clear()
         self.time_ax.set_xlabel('Czas', fontsize=12)
         self.time_ax.set_ylabel('Wielkość populacji', fontsize=12)
         self.time_ax.set_title(f'{model_info["name"]} - Animowana dynamika', fontsize=14)
         self.time_ax.grid(True, alpha=0.3)
 
-        # Przygotuj linie dla każdej zmiennej
         colors = ['blue', 'red', 'green', 'orange', 'purple']
         self.time_lines = []
         self.time_points = []
 
         for i, name in enumerate(model_info["var_names"]):
             line, = self.time_ax.plot([], [], color=colors[i % len(colors)],
-                                    linewidth=2, label=name)
+                                      linewidth=2, label=name)
             point, = self.time_ax.plot([], [], 'o', color=colors[i % len(colors)],
-                                     markersize=8)
+                                       markersize=8)
             self.time_lines.append(line)
             self.time_points.append(point)
 
         self.time_ax.legend()
 
-        # Płaszczyzna fazowa (tylko dla układów 2D)
         self.phase_ax.clear()
         if len(model_info["var_names"]) == 2:
             self.phase_ax.set_xlabel(model_info["var_names"][0], fontsize=12)
@@ -1064,20 +1002,16 @@ class AnimatedPopulationGUI:
             self.phase_point, = self.phase_ax.plot([], [], 'ro', markersize=10)
         else:
             self.phase_ax.text(0.5, 0.5, 'Płaszczyzna fazowa dostępna\ntylko dla modeli 2D',
-                             ha='center', va='center', transform=self.phase_ax.transAxes,
-                             fontsize=14)
+                               ha='center', va='center', transform=self.phase_ax.transAxes,
+                               fontsize=14)
 
-        # Odśwież wykresy
         self.time_canvas.draw()
         self.phase_canvas.draw()
 
     def animate_step(self):
-        """Wykonuje jeden krok animacji"""
         try:
-            # Pobierz następny punkt z generatora
             t, values = next(self.solver_generator)
 
-            # Dodaj do danych
             self.time_data.append(t)
             if isinstance(values, list):
                 if len(self.population_data) == 0:
@@ -1093,18 +1027,14 @@ class AnimatedPopulationGUI:
                     self.population_data = [[]]
                 self.population_data[0].append(values)
 
-            # Aktualizuj wykresy
             self.update_animation_plots()
 
-            # Aktualizuj postęp
             self.current_step += 1
             progress = (self.current_step / self.max_steps) * 100
             self.progress_var.set(progress)
 
-            # Aktualizuj status
             self.status_label.config(text=f"Krok {self.current_step}/{self.max_steps} (t={t:.2f})")
 
-            # Sprawdź czy animacja się skończyła
             if self.current_step >= self.max_steps:
                 self.stop_animation()
                 self.status_label.config(text="Animacja zakończona - można eksportować wykresy")
@@ -1122,7 +1052,6 @@ class AnimatedPopulationGUI:
             return False
 
     def update_animation_plots(self):
-        """Aktualizuje wykresy podczas animacji"""
 
         # Wykres czasowy
         for i, (line, point) in enumerate(zip(self.time_lines, self.time_points)):
@@ -1160,24 +1089,19 @@ class AnimatedPopulationGUI:
                 self.phase_ax.set_xlim(min(x_data) - x_margin, max(x_data) + x_margin)
                 self.phase_ax.set_ylim(min(y_data) - y_margin, max(y_data) + y_margin)
 
-        # Odśwież wykresy
         self.time_canvas.draw_idle()
         self.phase_canvas.draw_idle()
 
     def animation_loop(self):
-        """Główna pętla animacji"""
         if self.is_playing:
             success = self.animate_step()
             if success:
-                # Oblicz opóźnienie na podstawie prędkości
-                delay = int(50 / self.speed_var.get())  # 50ms bazowe opóźnienie
+                delay = int(50 / self.speed_var.get())  # 50ms opóźnienie
                 self.root.after(delay, self.animation_loop)
 
     def start_animation(self):
-        """Rozpoczyna animację"""
         if not self.is_playing:
             if self.current_step == 0:
-                # Nowa animacja
                 if not self.prepare_animation_data():
                     return
 
@@ -1189,14 +1113,12 @@ class AnimatedPopulationGUI:
             self.animation_loop()
 
     def pause_animation(self):
-        """Pauzuje animację"""
         self.is_playing = False
         self.play_button.config(text="▶ Wznów", state="normal")
         self.pause_button.config(state="disabled")
         self.status_label.config(text="Animacja wstrzymana")
 
     def stop_animation(self):
-        """Zatrzymuje animację"""
         self.is_playing = False
         self.current_step = 0
         self.progress_var.set(0)
@@ -1208,12 +1130,10 @@ class AnimatedPopulationGUI:
         self.status_label.config(text="Gotowy do animacji")
 
     def on_speed_change(self, event=None):
-        """Obsługuje zmianę prędkości animacji"""
         speed = self.speed_var.get()
         self.speed_label.config(text=f"{speed:.1f}x")
 
     def save_parameters(self):
-        """Zapisuje parametry do pliku"""
         try:
             model_info = self.models.models[self.current_model]
 
@@ -1252,7 +1172,6 @@ class AnimatedPopulationGUI:
             messagebox.showerror("Błąd", f"Nie udało się zapisać parametrów: {str(e)}")
 
     def load_parameters(self):
-        """Wczytuje parametry z pliku"""
         try:
             filename = filedialog.askopenfilename(
                 filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
@@ -1264,24 +1183,20 @@ class AnimatedPopulationGUI:
             with open(filename, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            # Zmień model jeśli potrzeba
             if data["model"] != self.current_model:
                 self.model_var.set(data["model"])
                 self.on_model_change()
 
-            # Wczytaj parametry
             for param, value in data["parameters"].items():
                 if param in self.param_entries:
                     self.param_entries[param].delete(0, tk.END)
                     self.param_entries[param].insert(0, str(value))
 
-            # Wczytaj warunki początkowe
             for ic, value in data["initial_conditions"].items():
                 if ic in self.ic_entries:
                     self.ic_entries[ic].delete(0, tk.END)
                     self.ic_entries[ic].insert(0, str(value))
 
-            # Wczytaj parametry symulacji
             self.time_entry.delete(0, tk.END)
             self.time_entry.insert(0, data["simulation"]["time"])
             self.step_entry.delete(0, tk.END)
@@ -1293,11 +1208,9 @@ class AnimatedPopulationGUI:
             messagebox.showerror("Błąd", f"Nie udało się wczytać parametrów: {str(e)}")
 
     def run(self):
-        """Uruchamia aplikację"""
         self.root.mainloop()
 
 
 if __name__ == "__main__":
     app = AnimatedPopulationGUI()
     app.run()
-

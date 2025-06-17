@@ -1,23 +1,16 @@
 #!/usr/bin/env python3
-"""
-Skrypt uruchamiający ulepszoną animowaną aplikację do badania dynamiki populacji
-Z równaniami matematycznymi i eksportem wykresów
-"""
 
 import sys
 import os
 
-# Dodaj ścieżkę do modułu
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
 def main():
-    """Główna funkcja uruchamiająca ulepszoną aplikację"""
     try:
         print("🎬📐 Uruchamianie ulepszonej animowanej aplikacji populacyjnej...")
         print("Sprawdzanie zależności...")
 
-        # Sprawdź dostępność bibliotek
         try:
             import numpy
             print("✓ NumPy")
@@ -43,7 +36,6 @@ def main():
         print("\nWszystkie zależności są dostępne.")
         print("🎬📐 Uruchamianie ulepszonej aplikacji...")
 
-        # Uruchom aplikację
         from population_app import AnimatedPopulationGUI
 
         app = AnimatedPopulationGUI()
@@ -90,4 +82,3 @@ if __name__ == "__main__":
     success = main()
     if not success:
         sys.exit(1)
-
